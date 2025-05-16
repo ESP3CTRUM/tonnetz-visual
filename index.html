@@ -44,7 +44,11 @@
     <label for="color">Color nodos:</label>
     <input type="color" id="color" value="#66ccff">
     <button id="reset">Resetear visualización</button>
+    <input type="file" id="midiFile" accept=".mid,.midi" style="margin-left:20px;">
+    <button id="iniciarAudio">Iniciar Audio</button>
   </div>
   <script type="module" src="main.js"></script>
+  <script src="https://unpkg.com/tone@next/build/Tone.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/midi-parser-js@4.0.4/dist/midi-parser.js"></script>
 </body>
 </html>

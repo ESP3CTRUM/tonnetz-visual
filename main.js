@@ -117,8 +117,53 @@ scene.add(luzDireccional);
 const raycaster = new THREE.Raycaster();
 const mouse = new THREE.Vector2();
 
+// === Módulo de Audio y Síntesis ===
+
+let audioIniciado = false;
+let sampler = null;
+let notaPorNodo = [];
+
+// Mapeo simple de nodos a notas (C4, D4, E4, ...)
+const notasBase = ["C4", "D4", "E4", "F4", "G4", "A4", "B4", "C5", "D5", "E5", "F5", "G5", "A5", "B5"];
+
+function asignarNotasANodos() {
+  // Asignar notas cíclicamente a los nodos
+  let idx = 0;
+  for (let n of nodos) {
+    notaPorNodo.push(notasBase[idx % notasBase.length]);
+    idx++;
+  }
+}
+asignarNotasANodos();
+
+async function cargarSampler(instrumento = "acoustic_grand_piano") {
+  // Usar Tone.js Sampler con samples de piano por defecto
+  sampler = new Tone.Sampler({
+    urls: {
+      C4: "C4.mp3",
+      D#4: "Ds4.mp3",
+      F#4: "Fs4.mp3",
+      A4: "A4.mp3"
+    },
+    baseUrl: "https://tonejs.github.io/audio/salamander/",
+    onload: () => console.log("Sampler cargado")
+  }).toDestination();
+}
+
+// Botón para iniciar el audio (por políticas de autoplay)
+const btnIniciarAudio = document.getElementById('iniciarAudio');
+btnIniciarAudio.addEventListener('click', async () => {
+  if (!audioIniciado) {
+    await Tone.start();
+    await cargarSampler();
+    audioIniciado = true;
+    btnIniciarAudio.disabled = true;
+    btnIniciarAudio.textContent = "Audio iniciado";
+  }
+});
+
+// Al hacer click en un nodo, además de resaltar, reproducir la nota
 function onClick(event) {
-  // Calcular posición normalizada del mouse
   mouse.x = (event.clientX / window.innerWidth) * 2 - 1;
   mouse.y = -(event.clientY / window.innerHeight) * 2 + 1;
   raycaster.setFromCamera(mouse, camera);
@@ -126,8 +171,16 @@ function onClick(event) {
   if (intersects.length > 0) {
     const nodoSeleccionado = nodos.find(n => n.mesh === intersects[0].object);
     resaltarConexiones(nodoSeleccionado);
+    // Reproducir nota asociada
+    if (audioIniciado && sampler) {
+      const idx = nodos.indexOf(nodoSeleccionado);
+      const nota = notaPorNodo[idx];
+      sampler.triggerAttackRelease(nota, "8n");
+    }
   }
 }
+
+window.addEventListener('click', onClick);
 
 function resaltarConexiones(nodo) {
   // Restaurar todas las líneas
@@ -147,17 +200,61 @@ function resaltarConexiones(nodo) {
   nodo.mesh.material.color.set(0xff3366);
 }
 
-window.addEventListener('click', onClick);
+// === Importación y Parsing de Archivos MIDI ===
 
-// === Estructura para integración MIDI/audio ===
-// Aquí se puede conectar la lógica de eventos musicales para llamar a resaltarConexiones(nodo) según la nota tocada
-// Por ejemplo, usando Tone.js o MIDI.js para detectar eventos y activar efectos visuales
+let eventosMIDI = [];
 
-// Ejemplo de función para simular evento musical (puedes llamar esto desde integración MIDI)
-function activarNotaPorIndice(indice) {
-  if (nodos[indice]) {
-    resaltarConexiones(nodos[indice]);
+const inputMidi = document.getElementById('midiFile');
+inputMidi.addEventListener('change', (e) => {
+  const file = e.target.files[0];
+  if (!file) return;
+  const reader = new FileReader();
+  reader.onload = function(ev) {
+    const arrayBuffer = ev.target.result;
+    parsearMIDI(arrayBuffer);
+  };
+  reader.readAsArrayBuffer(file);
+});
+
+function parsearMIDI(arrayBuffer) {
+  // Usar midi-parser-js para convertir a JSON
+  const midiArray = new Uint8Array(arrayBuffer);
+  const midiData = MidiParser.parse(midiArray);
+  // Validar tipo
+  if (midiData.header && (midiData.header.formatType === 0 || midiData.header.formatType === 1)) {
+    eventosMIDI = extraerEventosNotas(midiData);
+    alert('Archivo MIDI cargado correctamente. Eventos de nota: ' + eventosMIDI.length);
+  } else {
+    alert('Formato MIDI no soportado. Solo Type 0 y 1.');
   }
+}
+
+function extraerEventosNotas(midiData) {
+  // Extraer eventos de notaOn y notaOff con tiempo
+  let eventos = [];
+  (midiData.track || []).forEach(track => {
+    let tiempo = 0;
+    (track.event || []).forEach(ev => {
+      tiempo += ev.deltaTime || 0;
+      if (ev.type === 9 && ev.data && ev.data[1] > 0) { // noteOn
+        eventos.push({
+          nota: ev.data[0],
+          tiempo,
+          tipo: 'on',
+          canal: ev.channel
+        });
+      }
+      if (ev.type === 8 || (ev.type === 9 && ev.data && ev.data[1] === 0)) { // noteOff
+        eventos.push({
+          nota: ev.data[0],
+          tiempo,
+          tipo: 'off',
+          canal: ev.channel
+        });
+      }
+    });
+  });
+  return eventos;
 }
 
 // === Lógica del menú de usuario ===
