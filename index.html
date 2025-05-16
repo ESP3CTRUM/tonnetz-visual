@@ -1,0 +1,50 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Visualización 3D Tonnetz</title>
+  <style>
+    body { margin: 0; overflow: hidden; }
+    canvas { display: block; }
+    #menu {
+      position: fixed;
+      top: 0; left: 0; right: 0;
+      background: rgba(34,34,51,0.95);
+      color: #fff;
+      z-index: 10;
+      padding: 10px 20px;
+      display: flex;
+      gap: 20px;
+      align-items: center;
+      font-family: sans-serif;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.2);
+    }
+    #menu label { margin-right: 8px; }
+    #menu select, #menu button {
+      background: #222233;
+      color: #fff;
+      border: 1px solid #555;
+      border-radius: 4px;
+      padding: 4px 8px;
+    }
+    #menu button:hover { background: #444466; }
+  </style>
+</head>
+<body>
+  <div id="menu">
+    <label for="instrumento">Instrumento:</label>
+    <select id="instrumento">
+      <option value="acoustic_grand_piano">Piano</option>
+      <option value="acoustic_guitar_nylon">Guitarra</option>
+      <option value="violin">Violín</option>
+      <option value="flute">Flauta</option>
+      <option value="synth_lead">Sintetizador</option>
+    </select>
+    <label for="color">Color nodos:</label>
+    <input type="color" id="color" value="#66ccff">
+    <button id="reset">Resetear visualización</button>
+  </div>
+  <script type="module" src="main.js"></script>
+</body>
+</html>
