@@ -36,14 +36,20 @@
     <label for="instrumento">Instrumento:</label>
     <select id="instrumento">
       <option value="acoustic_grand_piano">Piano</option>
-      <option value="acoustic_guitar_nylon">Guitarra</option>
+      <option value="acoustic_guitar_nylon">Guitarra de nylon</option>
+      <option value="acoustic_guitar_steel">Guitarra de acero</option>
       <option value="violin">Violín</option>
-      <option value="flute">Flauta</option>
-      <option value="synth_lead">Sintetizador</option>
+      <option value="cello">Violonchelo</option>
+      <option value="electric_bass">Bajo eléctrico</option>
     </select>
-    <label for="color">Color nodos:</label>
-    <input type="color" id="color" value="#66ccff">
-    <button id="reset">Resetear visualización</button>
+    <label for="paleta">Paleta de color:</label>
+    <select id="paleta">
+      <option value="warm">Cálida</option>
+      <option value="cool">Fría</option>
+      <option value="neutral">Neutra</option>
+    </select>
+    <button id="fullscreen">Pantalla completa</button>
+    <button id="resetView">Reset de vista</button>
     <input type="file" id="midiFile" accept=".mid,.midi" style="margin-left:20px;">
     <button id="iniciarAudio">Iniciar Audio</button>
   </div>

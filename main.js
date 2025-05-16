@@ -307,34 +307,70 @@ function extraerEventosNotas(midiData) {
   return eventos;
 }
 
-// === Lógica del menú de usuario ===
+// === Paletas de color ===
+const paletas = {
+  warm: { node: "#FF5733", line: "#FFC300", background: "#F2A65A" },
+  cool: { node: "#3498DB", line: "#2ECC71", background: "#B3B6B7" },
+  neutral: { node: "#808080", line: "#A9A9A9", background: "#D3D3D3" }
+};
 
-const colorInput = document.getElementById('color');
-const resetBtn = document.getElementById('reset');
-const instrumentoSelect = document.getElementById('instrumento');
-
-colorInput.addEventListener('input', (e) => {
-  const color = new THREE.Color(e.target.value);
+function aplicarPaleta(nombre) {
+  const paleta = paletas[nombre];
+  if (!paleta) return;
+  // Fondo
+  const colorFondo = new THREE.Color(scene.background);
+  const colorFondoFinal = new THREE.Color(paleta.background);
+  new TWEEN.Tween({ r: colorFondo.r, g: colorFondo.g, b: colorFondo.b })
+    .to({ r: colorFondoFinal.r, g: colorFondoFinal.g, b: colorFondoFinal.b }, 500)
+    .onUpdate(function (val) {
+      scene.background.setRGB(val.r, val.g, val.b);
+    })
+    .start();
+  // Nodos
   nodos.forEach(n => {
-    // Solo cambia el color si el nodo no está resaltado
-    if (n.mesh.material.color.getHexString() !== 'ff3366') {
-      n.mesh.material.color.copy(color);
-    }
+    const colorInicial = { ...n.mesh.material.color };
+    const colorFinal = new THREE.Color(paleta.node);
+    new TWEEN.Tween(colorInicial)
+      .to({ r: colorFinal.r, g: colorFinal.g, b: colorFinal.b }, 500)
+      .onUpdate(() => {
+        n.mesh.material.color.setRGB(colorInicial.r, colorInicial.g, colorInicial.b);
+      })
+      .start();
   });
-});
-
-resetBtn.addEventListener('click', () => {
-  // Restaurar color de nodos y líneas
-  const color = new THREE.Color(colorInput.value);
-  nodos.forEach(n => n.mesh.material.color.copy(color));
+  // Líneas
   conexiones.forEach(c => {
-    c.material.color.set(0xffffff);
-    c.material.linewidth = 2;
+    const colorInicial = { ...c.material.color };
+    const colorFinal = new THREE.Color(paleta.line);
+    new TWEEN.Tween(colorInicial)
+      .to({ r: colorFinal.r, g: colorFinal.g, b: colorFinal.b }, 500)
+      .onUpdate(() => {
+        c.material.color.setRGB(colorInicial.r, colorInicial.g, colorInicial.b);
+      })
+      .start();
   });
+}
+
+// === UI: pantalla completa y reset de vista ===
+const btnFullscreen = document.getElementById('fullscreen');
+btnFullscreen.addEventListener('click', () => {
+  if (!document.fullscreenElement) {
+    document.body.requestFullscreen();
+  } else {
+    document.exitFullscreen();
+  }
 });
 
-instrumentoSelect.addEventListener('change', (e) => {
-  // Aquí se puede integrar la lógica para cambiar el instrumento virtual
-  // Por ahora solo mostramos en consola
-  console.log('Instrumento seleccionado:', e.target.value);
+const btnResetView = document.getElementById('resetView');
+btnResetView.addEventListener('click', () => {
+  camera.position.set(0, 10, 20);
+  controls.target.set(0, 0, 0);
+  controls.update();
 });
+
+// === Selector de paleta de color ===
+const paletaSelect = document.getElementById('paleta');
+paletaSelect.addEventListener('change', (e) => {
+  aplicarPaleta(e.target.value);
+});
+// Aplicar paleta por defecto
+aplicarPaleta('cool');
