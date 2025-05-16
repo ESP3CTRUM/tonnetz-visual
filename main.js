@@ -34,6 +34,7 @@ controls.maxDistance = 50;
 function animate() {
   requestAnimationFrame(animate);
   controls.update();
+  TWEEN.update();
   renderer.render(scene, camera);
 }
 animate();
@@ -70,10 +71,22 @@ for (let fila = 0; fila < numFilas; fila++) {
     const posicion = calcularPosicionNodo(fila, columna);
     const esfera = new THREE.Mesh(geometriaNodo, materialNodo.clone());
     esfera.position.copy(posicion);
+    // Asignar metadatos
+    esfera.userData = {
+      tipo: 'nodo',
+      fila,
+      columna,
+      nota: null // Se asigna después
+    };
     scene.add(esfera);
     nodos.push({ fila, columna, mesh: esfera, posicion });
   }
 }
+
+// Asignar nota a userData de cada nodo
+nodos.forEach((n, idx) => {
+  n.mesh.userData.nota = notaPorNodo[idx];
+});
 
 // === Efectos visuales dinámicos y modularización ===
 
@@ -141,8 +154,8 @@ async function cargarSampler(instrumento = "acoustic_grand_piano") {
   sampler = new Tone.Sampler({
     urls: {
       C4: "C4.mp3",
-      D#4: "Ds4.mp3",
-      F#4: "Fs4.mp3",
+      Ds4: "Ds4.mp3",
+      Fs4: "Fs4.mp3",
       A4: "A4.mp3"
     },
     baseUrl: "https://tonejs.github.io/audio/salamander/",
@@ -162,18 +175,55 @@ btnIniciarAudio.addEventListener('click', async () => {
   }
 });
 
-// Al hacer click en un nodo, además de resaltar, reproducir la nota
+// === Sistema de estados para nodos activos ===
+const nodosActivos = new Set();
+
+// === Animación suave con Tween.js ===
+function animarNodo(nodo, activo = true) {
+  const mesh = nodo.mesh;
+  // Color
+  const colorInicial = { ...mesh.material.color };
+  const colorFinal = activo ? { r: 1, g: 0.2, b: 0.4 } : { r: 0.4, g: 0.8, b: 1 };
+  new TWEEN.Tween(colorInicial)
+    .to(colorFinal, 250)
+    .onUpdate(() => {
+      mesh.material.color.setRGB(colorInicial.r, colorInicial.g, colorInicial.b);
+    })
+    .start();
+  // Escala
+  const escalaInicial = { x: mesh.scale.x, y: mesh.scale.y, z: mesh.scale.z };
+  const escalaFinal = activo ? { x: 1.5, y: 1.5, z: 1.5 } : { x: 1, y: 1, z: 1 };
+  new TWEEN.Tween(escalaInicial)
+    .to(escalaFinal, 250)
+    .onUpdate(() => {
+      mesh.scale.set(escalaInicial.x, escalaInicial.y, escalaInicial.z);
+    })
+    .start();
+}
+
+// Modificar la función de click para animar y gestionar estados
 function onClick(event) {
   mouse.x = (event.clientX / window.innerWidth) * 2 - 1;
   mouse.y = -(event.clientY / window.innerHeight) * 2 + 1;
   raycaster.setFromCamera(mouse, camera);
-  const intersects = raycaster.intersectObjects(nodos.map(n => n.mesh));
-  if (intersects.length > 0) {
-    const nodoSeleccionado = nodos.find(n => n.mesh === intersects[0].object);
-    resaltarConexiones(nodoSeleccionado);
+  // Buscar intersección con nodos
+  const intersected = raycaster.intersectObjects(nodos.map(n => n.mesh));
+  if (intersected.length > 0) {
+    const mesh = intersected[0].object;
+    const nodo = nodos.find(n => n.mesh === mesh);
+    resaltarConexiones(nodo);
+    // Animar nodo
+    if (!nodosActivos.has(nodo)) {
+      animarNodo(nodo, true);
+      nodosActivos.add(nodo);
+      setTimeout(() => {
+        animarNodo(nodo, false);
+        nodosActivos.delete(nodo);
+      }, 400);
+    }
     // Reproducir nota asociada
     if (audioIniciado && sampler) {
-      const idx = nodos.indexOf(nodoSeleccionado);
+      const idx = nodos.indexOf(nodo);
       const nota = notaPorNodo[idx];
       sampler.triggerAttackRelease(nota, "8n");
     }
